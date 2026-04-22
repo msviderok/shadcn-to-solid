@@ -2,6 +2,10 @@
   "name": "@msviderok/shadcn-to-solid",
   "version": "0.0.1",
   "description": "Wrap shadcn add/init and rewrite React Base UI output to Solid",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/msviderok/shadcn-to-solid.git"
+  },
   "bin": {
     "shadcn-solid": "./dist/cli.js"
   },
