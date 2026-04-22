@@ -16,7 +16,7 @@ export function Button({ className, size = "sm", id, ...props }: ButtonProps) {
 `);
 
     expect(output).toContain(`import { mergeProps, splitProps } from "solid-js";`);
-    expect(output).toContain(`const mergedProps = mergeProps({ size: "sm" }, props);`);
+    expect(output).toContain(`const mergedProps = mergeProps({ size: "sm" as const }, props);`);
     expect(output).toContain(
       `const [local, rest] = splitProps(mergedProps, ["class", "size", "id"]);`,
     );
@@ -55,7 +55,9 @@ export function TabsList({ variant = "default", className }: TabsListProps) {
 }
 `);
 
-    expect(output).toContain(`const mergedProps = mergeProps({ variant: "default" }, props);`);
+    expect(output).toContain(
+      `const mergedProps = mergeProps({ variant: "default" as const }, props);`,
+    );
     expect(output).toContain(
       `const [local, rest] = splitProps(mergedProps, ["variant", "class"]);`,
     );
@@ -78,5 +80,21 @@ export function Button({ ...rest }: ButtonProps) {
     expect(output).toContain(`return <button {...props} />;`);
     expect(output).not.toContain(`splitProps`);
     expect(output).not.toContain(`mergeProps`);
+  });
+
+  it("casts string literal defaults in merged props to const", async () => {
+    const output = await transformSource(`
+type TooltipProps = {
+  align?: "start" | "center" | "end";
+  side?: "top" | "bottom";
+};
+
+export function TooltipContent({ align = "center", side = "top" }: TooltipProps) {
+  return <div data-align={align} data-side={side} />;
+}
+`);
+
+    expect(output).toContain(`align: "center" as const`);
+    expect(output).toContain(`side: "top" as const`);
   });
 });

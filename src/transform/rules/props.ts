@@ -19,6 +19,7 @@ interface BindingInfo {
   declarationNode: Node & import("ts-morph").ReferenceFindableNode;
   propName: string;
   defaultValue?: string;
+  hasLiteralStringDefault: boolean;
   symbol: import("ts-morph").Symbol | undefined;
 }
 
@@ -94,7 +95,7 @@ export function rewriteProps(context: FileTransformContext): void {
 
     const defaults = bindingInfo
       .filter((binding) => binding.defaultValue)
-      .map((binding) => `${JSON.stringify(binding.propName)}: ${binding.defaultValue}`);
+      .map((binding) => `${JSON.stringify(binding.propName)}: ${serializeDefaultValue(binding)}`);
 
     const sourceObject = defaults.length > 0 ? "mergedProps" : "props";
     const statements: string[] = [];
@@ -116,14 +117,31 @@ export function rewriteProps(context: FileTransformContext): void {
 function toBindingInfo(binding: BindingElement): BindingInfo {
   const aliasName = binding.getNameNode().getText();
   const propertyName = binding.getPropertyNameNode()?.getText() ?? aliasName;
+  const initializer = binding.getInitializer();
 
   return {
     aliasName,
     declarationNode: binding.getNameNode() as Node & import("ts-morph").ReferenceFindableNode,
     propName: normalizePropName(propertyName),
-    defaultValue: binding.getInitializer()?.getText(),
+    defaultValue: initializer?.getText(),
+    hasLiteralStringDefault: Boolean(
+      initializer?.isKind(SyntaxKind.StringLiteral) ||
+      initializer?.isKind(SyntaxKind.NoSubstitutionTemplateLiteral),
+    ),
     symbol: binding.getNameNode().getSymbol(),
   };
+}
+
+function serializeDefaultValue(binding: BindingInfo): string {
+  if (!binding.defaultValue) {
+    return "undefined";
+  }
+
+  if (binding.hasLiteralStringDefault) {
+    return `${binding.defaultValue} as const`;
+  }
+
+  return binding.defaultValue;
 }
 
 function replaceBindingReferences(

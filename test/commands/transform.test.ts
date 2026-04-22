@@ -176,6 +176,7 @@ export function TooltipContent({
     const output = await fs.readFile(filePath, "utf8");
     const nextDependencyTypes = await fs.readFile(dependencyTypePath, "utf8");
 
+    expect(output).toContain(`const mergedProps = mergeProps({ side: "top" as const }, props);`);
     expect(output).toContain(`const [local, rest] = splitProps(mergedProps, [`);
     expect(output).toContain(`<TooltipPrimitive.Positioner side={local.side} {...rest}>`);
     expect(nextDependencyTypes).toBe(originalDependencyTypes);
