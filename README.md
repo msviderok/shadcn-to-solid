@@ -1,42 +1,46 @@
 # shadcn-to-solid
 
-`shadcn-to-solid` is a thin CLI wrapper around `shadcn@latest` for Base UI-based output. It runs normal `shadcn` commands, then rewrites the generated React files into Solid-friendly code.
+Thin CLI wrapper around `shadcn@latest` for Base UI-based output. It runs
+`shadcn` commands, then rewrites generated React files into Solid-friendly code.
 
-It is for generated component files, not full-app React migrations.
+Built for generated component files, not full-app React migrations.
 
-## What it does
-
-- Runs `shadcn@latest` through your current package manager (`pnpm`, `npm`, `yarn`, or `bun`).
-- `init`: runs `shadcn init`, forces `components.json` to `tsx: true`, patches common aliases, creates `shadcn-solid.config.ts` if missing, then transforms the generated files. If `components.json` already exists, it first offers to just scaffold `shadcn-solid.config.ts` for an existing project and skip rerunning `shadcn init`.
-- `add <names...>`: runs `shadcn add ...`, snapshots the configured component/lib roots, and transforms only files that changed.
-- `transform [glob...]`: scans for unported files, lists them, asks for confirmation, then rewrites only those files. With no globs it scans `componentsDir`. Use `-y` to skip the prompt.
-- `doctor [glob...]`: scans for leftover React-specific patterns and post-transform issues such as invalid Solid `render` prop syntax. By default it scans `componentsDir` and `libDir` `ts/tsx` files. Use `--write` to auto-fix files when possible.
-- Formats rewritten files with Prettier and prints a per-file report.
-
-## What it rewrites
-
-- Import sources from `@base-ui/react` to `@msviderok/base-ui-solid`, plus extra package remaps via `importMap` such as the default `lucide-react` -> `lucide-solid`.
-- React hooks: `useState`, `useEffect`, `useLayoutEffect`, `useMemo`, `useCallback`, `useRef`, and simple `forwardRef`.
-- Safe signal call sites, so reads like `open` become `open()` when needed.
-- Destructured component props into Solid `splitProps` and `mergeProps`.
-- JSX props like `className` -> `class`, `htmlFor` -> `for`, and form `onChange` -> `onInput`.
-- JSX `{items.map(...)}` into `<For each={...}>`.
-- Inline style objects from camelCase to kebab-case, with numeric CSS normalization and `styleUnitMap` overrides.
-- Common React types such as `React.ComponentProps`, `ReactNode`, `React.HTMLAttributes`, and `React.CSSProperties`.
-- `TODO(shadcn-solid)` comments for anything that is not safe to guess, including React escape hatches like `React.Children` and `React.cloneElement`.
-
-## Use
-
-Requires Node `>=18.18.0`.
+## Quick start
 
 ```bash
 pnpm dlx @msviderok/shadcn-to-solid init
-pnpm dlx @msviderok/shadcn-to-solid transform
 pnpm dlx @msviderok/shadcn-to-solid add button
+pnpm dlx @msviderok/shadcn-to-solid transform
 bunx @msviderok/shadcn-to-solid doctor
 ```
 
-No local install is required. `npx`, `pnpm dlx`, `yarn dlx`, and `bunx` all work. The wrapper will invoke `shadcn@latest` with the package manager you are already using.
+Requires Node `>=18.18.0`.
+
+No local install needed. `npx`, `pnpm dlx`, `yarn dlx`, and `bunx` all work.
+
+## Commands
+
+| Command               | Description                                                                                                                                                                                                                                                      |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `init`                | Runs `shadcn init`, forces `components.json` to `tsx: true`, patches common aliases, creates `shadcn-solid.config.ts` if missing, then transforms generated files. If `components.json` already exists, it can scaffold only the config for an existing project. |
+| `add <names...>`      | Runs `shadcn add ...`, snapshots configured component and lib roots, then transforms only changed files.                                                                                                                                                         |
+| `transform [glob...]` | Finds unported files, lists them, asks for confirmation, then rewrites only those files. Without globs, scans `componentsDir`. Use `-y` to skip the prompt.                                                                                                      |
+| `doctor [glob...]`    | Finds leftover React patterns and post-transform issues, including invalid Solid `render` prop syntax. By default scans `componentsDir` and `libDir` `ts`/`tsx` files. Use `--write` to auto-fix where possible.                                                 |
+
+Formatted with Prettier. Reports are printed per file.
+
+## What it rewrites
+
+| Area            | Changes                                                                                                                        |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| Imports         | Rewrites `@base-ui/react` to `@msviderok/base-ui-solid`, plus `importMap` remaps like `lucide-react` to `lucide-solid`.        |
+| Hooks           | Handles `useState`, `useEffect`, `useLayoutEffect`, `useMemo`, `useCallback`, `useRef`, and simple `forwardRef`.               |
+| Signals         | Converts safe signal reads like `open` to `open()` when needed.                                                                |
+| Props           | Converts destructured props into Solid `splitProps` and `mergeProps`.                                                          |
+| JSX             | Converts `className` to `class`, `htmlFor` to `for`, `onChange` to `onInput`, and `{items.map(...)}` to `<For each={...}>`.    |
+| Styles          | Converts inline style objects from camelCase to kebab-case, with numeric normalization and `styleUnitMap` overrides.           |
+| Types           | Handles common React types like `React.ComponentProps`, `ReactNode`, `React.HTMLAttributes`, and `React.CSSProperties`.        |
+| Unsafe patterns | Leaves `TODO(shadcn-solid)` markers for cases that are not safe to infer, including `React.Children` and `React.cloneElement`. |
 
 ## Config
 
@@ -60,14 +64,26 @@ export default {
 };
 ```
 
-The config is intentionally import-free so repeated `dlx`/`bunx` runs keep working even when this package is not installed in the project.
+The config is import-free so repeated `dlx` or `bunx` runs keep working even
+when this package is not installed in the project.
 
-Available overrides: `source`, `target`, `componentsDir`, `libDir`, `importMap`, `styleUnitMap`, `rules` (`signalCallSites`, `onChangeToOnInput`, `mapToFor`, `styleCamelToKebab`), and `customRules` (`ts-morph` project hook).
+Available overrides:
 
-The package names drive import rewriting today. The scaffolded `version` fields are currently metadata.
+| Key             | Purpose                                                                                           |
+| --------------- | ------------------------------------------------------------------------------------------------- |
+| `source`        | Source package metadata for import rewriting                                                      |
+| `target`        | Target package metadata for import rewriting                                                      |
+| `componentsDir` | Components root                                                                                   |
+| `libDir`        | Lib root                                                                                          |
+| `importMap`     | Extra import remaps                                                                               |
+| `styleUnitMap`  | Per-property CSS unit overrides                                                                   |
+| `rules`         | Built-in rewrite toggles: `signalCallSites`, `onChangeToOnInput`, `mapToFor`, `styleCamelToKebab` |
+| `customRules`   | `ts-morph` project hook                                                                           |
+
+Package names drive import rewriting today. `version` fields are metadata only.
 
 ## Limits
 
 - Best for Base UI-flavored generated component code, not arbitrary React codebases.
-- `doctor --write` re-runs the transformer over files with auto-fixable findings so previously generated code can be normalized after rules improve.
-- When a pattern is ambiguous, the tool leaves a TODO instead of inventing a migration.
+- `doctor --write` re-runs the transformer over files with auto-fixable findings.
+- Ambiguous patterns are left as `TODO` instead of being guessed.
