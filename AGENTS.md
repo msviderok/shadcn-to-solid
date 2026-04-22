@@ -86,3 +86,10 @@ For GitHub Actions, consider using [`voidzero-dev/setup-vp`](https://github.com/
 - [ ] Run `vp install` after pulling remote changes and before getting started.
 - [ ] Run `vp check` and `vp test` to validate changes.
 <!--VITE PLUS END-->
+
+## Version Bump Policy
+
+- Every uncommitted change set must include a package version bump in `package.json`.
+- Treat the entire current uncommitted worktree as a single change set, even if the user requests multiple follow-up edits in separate back-and-forth turns.
+- Do not add another version bump for additional edits while earlier changes are still uncommitted.
+- Add the next version bump only after the previous change set has been committed.
