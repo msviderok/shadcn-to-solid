@@ -29,6 +29,12 @@ No local install needed. `npx`, `pnpm dlx`, `yarn dlx`, and `bunx` all work.
 
 Formatted with Prettier. Reports are printed per file.
 
+If the consumer project needs its own formatter after writes, set `formatterCommand`
+in `shadcn-solid.config.ts`. The command runs once after each transform batch.
+Use `"{files}"` in the argument list to expand to the rewritten file paths.
+If `formatterCommand` is not set, the tool best-effort auto-detects `vp fmt`,
+then Biome, then Prettier from the consumer project.
+
 ## What it rewrites
 
 | Area            | Changes                                                                                                                        |
@@ -61,6 +67,7 @@ export default {
   },
   componentsDir: "src/components/ui",
   libDir: "src/lib",
+  // formatterCommand: ["vp", "fmt", "{files}"],
 };
 ```
 
@@ -69,16 +76,17 @@ when this package is not installed in the project.
 
 Available overrides:
 
-| Key             | Purpose                                                                                           |
-| --------------- | ------------------------------------------------------------------------------------------------- |
-| `source`        | Source package metadata for import rewriting                                                      |
-| `target`        | Target package metadata for import rewriting                                                      |
-| `componentsDir` | Components root                                                                                   |
-| `libDir`        | Lib root                                                                                          |
-| `importMap`     | Extra import remaps                                                                               |
-| `styleUnitMap`  | Per-property CSS unit overrides                                                                   |
-| `rules`         | Built-in rewrite toggles: `signalCallSites`, `onChangeToOnInput`, `mapToFor`, `styleCamelToKebab` |
-| `customRules`   | `ts-morph` project hook                                                                           |
+| Key                | Purpose                                                                                                                            |
+| ------------------ | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `source`           | Source package metadata for import rewriting                                                                                       |
+| `target`           | Target package metadata for import rewriting                                                                                       |
+| `componentsDir`    | Components root                                                                                                                    |
+| `libDir`           | Lib root                                                                                                                           |
+| `importMap`        | Extra import remaps                                                                                                                |
+| `styleUnitMap`     | Per-property CSS unit overrides                                                                                                    |
+| `formatterCommand` | Optional command run after transformed files are saved. `"{files}"` expands to rewritten paths, and this overrides auto-detection. |
+| `rules`            | Built-in rewrite toggles: `signalCallSites`, `onChangeToOnInput`, `mapToFor`, `styleCamelToKebab`                                  |
+| `customRules`      | `ts-morph` project hook                                                                                                            |
 
 Package names drive import rewriting today. `version` fields are metadata only.
 

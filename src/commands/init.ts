@@ -30,6 +30,8 @@ const DEFAULT_CONFIG_FILE = `export default {
   },
   componentsDir: "src/components/ui",
   libDir: "src/lib",
+  // Optional: run the consumer project's formatter after transformed files are saved.
+  // formatterCommand: ["vp", "fmt", "{files}"],
 };
 `;
 

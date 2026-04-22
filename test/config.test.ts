@@ -22,6 +22,7 @@ describe("config loading", () => {
       `export default {
   componentsDir: "app/components/ui",
   libDir: "app/lib",
+  formatterCommand: ["vp", "fmt", "{files}"],
   importMap: {
     "@base-ui/react": "@acme/base-ui-solid"
   }
@@ -34,6 +35,7 @@ describe("config loading", () => {
 
     expect(config.componentsDir).toBe("app/components/ui");
     expect(config.libDir).toBe("app/lib");
+    expect(config.formatterCommand).toEqual(["vp", "fmt", "{files}"]);
     expect(config.importMap["@base-ui/react"]).toBe("@acme/base-ui-solid");
   });
 });

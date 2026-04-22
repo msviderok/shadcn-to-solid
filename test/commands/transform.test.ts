@@ -32,6 +32,18 @@ async function createProjectFile(
   return { cwd, filePath };
 }
 
+async function createExecutable(
+  cwd: string,
+  relativePath: string,
+  source: string,
+): Promise<string> {
+  const filePath = path.join(cwd, relativePath);
+  await fs.mkdir(path.dirname(filePath), { recursive: true });
+  await fs.writeFile(filePath, source, "utf8");
+  await fs.chmod(filePath, 0o755);
+  return filePath;
+}
+
 describe("transform command", () => {
   it("lists unported files and cancels before rewriting when not confirmed", async () => {
     const { cwd, filePath } = await createProjectFile(
@@ -180,5 +192,159 @@ export function TooltipContent({
     expect(output).toContain(`const [local, rest] = splitProps(mergedProps, [`);
     expect(output).toContain(`<TooltipPrimitive.Positioner side={local.side} {...rest}>`);
     expect(nextDependencyTypes).toBe(originalDependencyTypes);
+  });
+
+  it("runs the configured consumer formatter command after saving transformed files", async () => {
+    const { cwd, filePath } = await createProjectFile(
+      "src/components/ui/button.tsx",
+      `import { useState } from "react";
+
+export function Button() {
+  const [open, setOpen] = useState(false);
+  return <button className={open ? "open" : "closed"} onClick={() => setOpen(!open)} />;
+}
+`,
+    );
+
+    const formatterLogPath = path.join(cwd, "formatter-log.json");
+    await fs.writeFile(
+      path.join(cwd, "shadcn-solid.config.ts"),
+      `export default {
+  formatterCommand: [
+    "node",
+    "-e",
+    "require('node:fs').writeFileSync(process.argv[1], JSON.stringify(process.argv.slice(2)))",
+    "${formatterLogPath.replaceAll("\\", "\\\\")}",
+    "{files}"
+  ]
+};
+`,
+      "utf8",
+    );
+
+    vi.spyOn(console, "log").mockImplementation(() => {});
+
+    await runTransformCommand({
+      cwd,
+      patterns: [],
+      yes: true,
+    });
+
+    const loggedFiles = JSON.parse(await fs.readFile(formatterLogPath, "utf8")) as string[];
+
+    expect(loggedFiles).toEqual([filePath]);
+  });
+
+  it("auto-detects a Vite+ formatter and only passes transformed files", async () => {
+    const { cwd, filePath } = await createProjectFile(
+      "src/components/ui/button.tsx",
+      `import { useState } from "react";
+
+export function Button() {
+  const [open, setOpen] = useState(false);
+  return <button className={open ? "open" : "closed"} onClick={() => setOpen(!open)} />;
+}
+`,
+    );
+
+    const formatterLogPath = path.join(cwd, "formatter-log.json");
+    await fs.writeFile(
+      path.join(cwd, "package.json"),
+      JSON.stringify(
+        {
+          name: "fixture",
+          version: "0.0.0",
+          devDependencies: {
+            "vite-plus": "1.0.0",
+          },
+        },
+        null,
+        2,
+      ),
+      "utf8",
+    );
+    await createExecutable(
+      cwd,
+      "node_modules/.bin/vp",
+      `#!/usr/bin/env node
+require("node:fs").writeFileSync(${JSON.stringify(formatterLogPath)}, JSON.stringify(process.argv.slice(2)));
+`,
+    );
+
+    vi.spyOn(console, "log").mockImplementation(() => {});
+
+    await runTransformCommand({
+      cwd,
+      patterns: [],
+      yes: true,
+      configPath: undefined,
+    });
+
+    const loggedArgs = JSON.parse(await fs.readFile(formatterLogPath, "utf8")) as string[];
+    expect(loggedArgs).toEqual(["fmt", filePath]);
+  });
+
+  it("prefers formatterCommand over auto-detected formatter", async () => {
+    const { cwd, filePath } = await createProjectFile(
+      "src/components/ui/button.tsx",
+      `import { useState } from "react";
+
+export function Button() {
+  const [open, setOpen] = useState(false);
+  return <button className={open ? "open" : "closed"} onClick={() => setOpen(!open)} />;
+}
+`,
+    );
+
+    const autoLogPath = path.join(cwd, "auto-log.json");
+    const overrideLogPath = path.join(cwd, "override-log.json");
+    await fs.writeFile(
+      path.join(cwd, "package.json"),
+      JSON.stringify(
+        {
+          name: "fixture",
+          version: "0.0.0",
+          devDependencies: {
+            "vite-plus": "1.0.0",
+          },
+        },
+        null,
+        2,
+      ),
+      "utf8",
+    );
+    await createExecutable(
+      cwd,
+      "node_modules/.bin/vp",
+      `#!/usr/bin/env node
+require("node:fs").writeFileSync(${JSON.stringify(autoLogPath)}, JSON.stringify(process.argv.slice(2)));
+`,
+    );
+    await fs.writeFile(
+      path.join(cwd, "shadcn-solid.config.ts"),
+      `export default {
+  formatterCommand: [
+    "node",
+    "-e",
+    "require('node:fs').writeFileSync(process.argv[1], JSON.stringify(process.argv.slice(2)))",
+    "${overrideLogPath.replaceAll("\\", "\\\\")}",
+    "{files}"
+  ]
+};
+`,
+      "utf8",
+    );
+
+    vi.spyOn(console, "log").mockImplementation(() => {});
+
+    await runTransformCommand({
+      cwd,
+      patterns: [],
+      yes: true,
+    });
+
+    await expect(fs.readFile(autoLogPath, "utf8")).rejects.toThrow();
+    const loggedFiles = JSON.parse(await fs.readFile(overrideLogPath, "utf8")) as string[];
+    expect(loggedFiles).toEqual([filePath]);
   });
 });

@@ -17,6 +17,7 @@ export interface ShadcnSolidConfig {
   componentsDir?: string;
   libDir?: string;
   styleUnitMap?: Record<string, StyleUnitKind>;
+  formatterCommand?: string[];
   rules?: {
     signalCallSites?: boolean;
     onChangeToOnInput?: boolean;
@@ -39,6 +40,7 @@ export interface ResolvedConfig {
   componentsDir: string;
   libDir: string;
   styleUnitMap: Record<string, StyleUnitKind>;
+  formatterCommand?: string[];
   rules: {
     signalCallSites: boolean;
     onChangeToOnInput: boolean;
@@ -66,6 +68,7 @@ export const DEFAULT_CONFIG: ResolvedConfig = {
   componentsDir: "src/components/ui",
   libDir: "src/lib",
   styleUnitMap: {},
+  formatterCommand: undefined,
   rules: {
     signalCallSites: true,
     onChangeToOnInput: true,
@@ -102,6 +105,7 @@ export function resolveConfig(
       ...DEFAULT_CONFIG.styleUnitMap,
       ...config?.styleUnitMap,
     },
+    formatterCommand: config?.formatterCommand ?? DEFAULT_CONFIG.formatterCommand,
     rules: {
       ...DEFAULT_CONFIG.rules,
       ...config?.rules,
