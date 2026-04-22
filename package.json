@@ -15,13 +15,16 @@
       "default": "./dist/index.js"
     }
   },
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
-    "build": "tsc -p tsconfig.json",
-    "prepack": "pnpm build",
-    "repack": "npm pack",
+    "build": "tsgo -p tsconfig.json",
+    "prepack": "vp run build",
+    "repack": "vp pm pack",
     "test": "vp test",
     "test:watch": "vp test",
-    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "typecheck": "tsgo -p tsconfig.json --noEmit",
     "prepare": "vp config"
   },
   "dependencies": {
