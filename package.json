@@ -1,0 +1,48 @@
+{
+  "name": "@msviderok/shadcn-to-solid",
+  "version": "0.0.1",
+  "description": "Wrap shadcn add/init and rewrite React Base UI output to Solid",
+  "bin": {
+    "shadcn-solid": "./dist/cli.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "prepack": "pnpm build",
+    "repack": "npm pack",
+    "test": "vp test",
+    "test:watch": "vp test",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "prepare": "vp config"
+  },
+  "dependencies": {
+    "commander": "^14.0.3",
+    "execa": "^9.6.1",
+    "fast-glob": "^3.3.3",
+    "jiti": "^2.6.1",
+    "prettier": "^3.8.3",
+    "ts-morph": "^28.0.0"
+  },
+  "devDependencies": {
+    "@base-ui/react": "^1.4.1",
+    "@msviderok/base-ui-solid": "1.0.0-beta.9",
+    "@types/node": "^25.6.0",
+    "@typescript/native-preview": "7.0.0-dev.20260421.2",
+    "react": "^19.2.5",
+    "typescript": "link:pnpm:@typescript/typescript6@^6.0.0",
+    "vite-plus": "catalog:"
+  },
+  "engines": {
+    "node": ">=18.18.0"
+  },
+  "packageManager": "pnpm@10.31.0"
+}

@@ -1,0 +1,47 @@
+import { Accordion } from "@msviderok/base-ui-solid/accordion";
+import {
+  createMemo,
+  createSignal,
+  splitProps,
+  type ComponentProps,
+} from "solid-js";
+
+type Props = ComponentProps<typeof Accordion.Root> & {
+  className?: string;
+};
+
+export function FancyAccordion(props: Props) {
+  const [local, rest] = splitProps(props, ["class"]);
+  const [count, setCount] = createSignal(0);
+  const label = createMemo(() => `Section ${count() + 1}`);
+
+  return (
+    <Accordion.Root class={local.class} defaultValue={["details"]} {...rest}>
+      <Accordion.Item value="details">
+        <Accordion.Header>
+          <Accordion.Trigger
+            class="flex w-full items-center justify-between gap-2"
+            onClick={() => setCount(count() + 1)}
+          >
+            <span>{label()}</span>
+            <svg
+              aria-hidden="true"
+              class="size-4 shrink-0 transition-transform duration-200"
+              fill="none"
+              stroke="currentColor"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width={2}
+              viewBox="0 0 24 24"
+            >
+              <path d="m6 9 6 6 6-6" />
+            </svg>
+          </Accordion.Trigger>
+        </Accordion.Header>
+        <Accordion.Panel style={{ "font-size": "12px", opacity: "0.5" }}>
+          Accordion content
+        </Accordion.Panel>
+      </Accordion.Item>
+    </Accordion.Root>
+  );
+}
