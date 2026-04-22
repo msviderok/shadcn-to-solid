@@ -17,11 +17,12 @@ afterEach(async () => {
 async function createProjectFile(
   relativePath: string,
   source: string,
+  baseDir = os.tmpdir(),
 ): Promise<{
   cwd: string;
   filePath: string;
 }> {
-  const cwd = await fs.mkdtemp(path.join(os.tmpdir(), "shadcn-solid-transform-"));
+  const cwd = await fs.mkdtemp(path.join(baseDir, "shadcn-solid-transform-"));
   tempDirs.push(cwd);
 
   const filePath = path.join(cwd, relativePath);
@@ -126,5 +127,57 @@ export interface TooltipPositionerProps {
 }
 `,
     );
+  });
+
+  it("does not rewrite external tooltip declarations while transforming props", async () => {
+    const { cwd, filePath } = await createProjectFile(
+      "src/components/ui/tooltip.tsx",
+      `import * as React from "react";
+import { Tooltip as TooltipPrimitive } from "@base-ui/react/tooltip";
+
+export function TooltipContent({
+  className,
+  side = "top",
+  children,
+  ...props
+}: React.ComponentProps<typeof TooltipPrimitive.Positioner> &
+  React.ComponentProps<typeof TooltipPrimitive.Popup>) {
+  return (
+    <TooltipPrimitive.Portal>
+      <TooltipPrimitive.Positioner side={side} {...props}>
+        <TooltipPrimitive.Popup className={className}>
+          {children}
+          <TooltipPrimitive.Arrow />
+        </TooltipPrimitive.Popup>
+      </TooltipPrimitive.Positioner>
+    </TooltipPrimitive.Portal>
+  );
+}
+`,
+      process.cwd(),
+    );
+
+    const dependencyTypePath = path.resolve(
+      process.cwd(),
+      "node_modules/@msviderok/base-ui-solid/esm/tooltip/positioner/TooltipPositioner.d.ts",
+    );
+    const originalDependencyTypes = await fs.readFile(dependencyTypePath, "utf8");
+
+    vi.spyOn(console, "log").mockImplementation(() => {});
+
+    await expect(
+      runTransformCommand({
+        cwd,
+        patterns: [],
+        yes: true,
+      }),
+    ).resolves.toBeUndefined();
+
+    const output = await fs.readFile(filePath, "utf8");
+    const nextDependencyTypes = await fs.readFile(dependencyTypePath, "utf8");
+
+    expect(output).toContain(`const [local, rest] = splitProps(mergedProps, [`);
+    expect(output).toContain(`<TooltipPrimitive.Positioner side={local.side} {...rest}>`);
+    expect(nextDependencyTypes).toBe(originalDependencyTypes);
   });
 });

@@ -183,6 +183,39 @@ export function isAssignmentTarget(node: Node): boolean {
   return false;
 }
 
+export function isNodeWithinScope(scope: Node, node: Node): boolean {
+  if (scope.getSourceFile() !== node.getSourceFile()) {
+    return false;
+  }
+
+  let current: Node | undefined = node;
+  while (current) {
+    if (current === scope) {
+      return true;
+    }
+
+    current = current.getParent();
+  }
+
+  return false;
+}
+
+export function referencesSameSymbol(
+  identifier: Node,
+  symbol: import("ts-morph").Symbol | undefined,
+): boolean {
+  if (!symbol) {
+    return false;
+  }
+
+  const identifierSymbol = identifier.getSymbol();
+  if (!identifierSymbol) {
+    return false;
+  }
+
+  return identifierSymbol.getFullyQualifiedName() === symbol.getFullyQualifiedName();
+}
+
 export function addTodoComment(
   context: FileTransformContext,
   ruleId: string,

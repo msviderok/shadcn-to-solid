@@ -1,5 +1,5 @@
 import { Node, SyntaxKind } from "ts-morph";
-import { isAssignmentTarget, type FileTransformContext } from "./_shared.js";
+import { isAssignmentTarget, isNodeWithinScope, type FileTransformContext } from "./_shared.js";
 
 export function rewriteSignalCallSites(context: FileTransformContext): void {
   if (!context.config.rules.signalCallSites) {
@@ -31,9 +31,7 @@ export function rewriteSignalCallSites(context: FileTransformContext): void {
         .findReferencesAsNodes()
         .filter(
           (identifier: Node) =>
-            identifier.getText() === getterInfo.name &&
-            identifier.getStart() >= fn.getStart() &&
-            identifier.getEnd() <= fn.getEnd(),
+            identifier.getText() === getterInfo.name && isNodeWithinScope(fn, identifier),
         );
 
       for (const identifier of references) {

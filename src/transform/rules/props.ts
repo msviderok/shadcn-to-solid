@@ -6,7 +6,13 @@ import {
   type FunctionDeclaration,
   type FunctionExpression,
 } from "ts-morph";
-import { addSolidValueImport, normalizePropName, type FileTransformContext } from "./_shared.js";
+import {
+  addSolidValueImport,
+  isNodeWithinScope,
+  normalizePropName,
+  referencesSameSymbol,
+  type FileTransformContext,
+} from "./_shared.js";
 
 interface BindingInfo {
   aliasName: string;
@@ -131,13 +137,17 @@ function replaceBindingReferences(
       .filter(
         (identifier: Node) =>
           identifier.getText() === binding.aliasName &&
-          isDescendantOf(body, identifier) &&
+          isNodeWithinScope(body, identifier) &&
           !isDeclarationIdentifier(identifier),
       )
       .sort((left: Node, right: Node) => right.getStart() - left.getStart());
 
     for (const identifier of matches) {
       const shorthandParent = identifier.getParentIfKind(SyntaxKind.ShorthandPropertyAssignment);
+      if (!referencesSameSymbol(identifier, binding.symbol) && !shorthandParent) {
+        continue;
+      }
+
       if (shorthandParent) {
         shorthandParent.replaceWithText(`${binding.aliasName}: local.${binding.propName}`);
         context.addRule("props");
@@ -158,10 +168,6 @@ function isDeclarationIdentifier(identifier: Node): boolean {
       parent.isKind(SyntaxKind.JsxAttribute) ||
       parent.isKind(SyntaxKind.PropertyAssignment)),
   );
-}
-
-function isDescendantOf(ancestor: Node, node: Node): boolean {
-  return node.getStart() >= ancestor.getStart() && node.getEnd() <= ancestor.getEnd();
 }
 
 function replaceRestReferences(
