@@ -54,6 +54,7 @@ describe("add command", () => {
     const cwd = await createProject();
     const componentPath = path.join(cwd, "src/components/ui/button.tsx");
     const utilsPath = path.join(cwd, "src/lib/utils.ts");
+    const clientOnlyPath = path.join(cwd, "src/lib/client-only.tsx");
     const runShadcnCommand = vi.fn(async () => {
       await fs.mkdir(path.dirname(componentPath), { recursive: true });
       await fs.mkdir(path.dirname(utilsPath), { recursive: true });
@@ -132,24 +133,26 @@ export function cn(...inputs: ClassValue[]) {
       path.join(cwd, "src/components/ui/button-primitive.tsx"),
       "utf8",
     );
-    const utils = await fs.readFile(utilsPath, "utf8");
+    const clientOnly = await fs.readFile(clientOnlyPath, "utf8");
 
     expect(runShadcnCommand).toHaveBeenCalledWith(cwd, ["add", "button", "--overwrite"]);
     expect(output).toContain(`import { Button as ButtonPrimitive } from "./button-primitive";`);
-    expect(output).toContain(`import { clientOnly, cn } from "@/lib/utils";`);
+    expect(output).toContain(`import { ClientOnly } from "@/lib/client-only";`);
+    expect(output).toContain(`import { cn } from "@/lib/utils";`);
     expect(output).toContain(`"preset base classes"`);
     expect(output).toContain(`preset: "preset variant classes"`);
     expect(output).toContain(`preset: "preset size classes"`);
-    expect(output).toContain(`const ClientOnlyButton = clientOnly(Button);`);
+    expect(output).toContain(`function ClientOnlyButton(props: Parameters<typeof Button>[0])`);
+    expect(output).toContain(`<ClientOnly>`);
+    expect(output).toContain(`<Button {...props} />`);
     expect(output).toContain(`export { ClientOnlyButton as Button, buttonVariants };`);
     expect(primitive).toContain(`export namespace Button`);
     expect(primitive).toContain(`export function Button(props: Button.Props)`);
-    expect(utils).toContain(`import { createComponent } from "solid-js/web";`);
-    expect(utils).toContain(
-      `import { createMemo, createSignal, onMount, Show, type JSX } from "solid-js";`,
+    expect(clientOnly).toContain(
+      `import { createSignal, onMount, Show, type JSX } from "solid-js";`,
     );
-    expect(utils).toContain(`export function clientOnly<TProps extends object>`);
-    expect(utils).toContain(`export function useHydrated(): () => boolean`);
+    expect(clientOnly).toContain(`export function ClientOnly(props: ClientOnlyProps)`);
+    expect(clientOnly).toContain(`export function useHydrated(): () => boolean`);
     expect(logs).toContain("add: installing experimental button.");
   });
 
@@ -157,6 +160,7 @@ export function cn(...inputs: ClassValue[]) {
     const cwd = await createProject();
     const componentPath = path.join(cwd, "src/components/ui/accordion.tsx");
     const utilsPath = path.join(cwd, "src/lib/utils.ts");
+    const clientOnlyPath = path.join(cwd, "src/lib/client-only.tsx");
     const runShadcnCommand = vi.fn(async () => {
       await fs.mkdir(path.dirname(componentPath), { recursive: true });
       await fs.mkdir(path.dirname(utilsPath), { recursive: true });
@@ -198,7 +202,7 @@ export { Accordion };
     expect(transformProjectFiles).toHaveBeenCalledWith({
       cwd,
       config: resolveConfig(undefined),
-      filePaths: [componentPath, utilsPath],
+      filePaths: [componentPath, utilsPath, clientOnlyPath],
     });
   });
 });

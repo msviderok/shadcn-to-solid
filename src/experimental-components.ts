@@ -194,8 +194,16 @@ export async function wrapClientOnlyComponentExports(
 
   let nextSource = ensureClientOnlyImport(source);
   const declarations = exportedNames
-    .filter((name) => !nextSource.includes(`const ClientOnly${name} = clientOnly(${name});`))
-    .map((name) => `const ClientOnly${name} = clientOnly(${name});`)
+    .filter((name) => !nextSource.includes(`function ClientOnly${name}(`))
+    .map(
+      (name) => `function ClientOnly${name}(props: Parameters<typeof ${name}>[0]) {
+  return (
+    <ClientOnly>
+      <${name} {...props} />
+    </ClientOnly>
+  );
+}`,
+    )
     .join("\n");
 
   if (declarations) {
@@ -221,35 +229,30 @@ async function ensureClientOnlyHelper(
   cwd: string,
   config: ResolvedConfig,
 ): Promise<string | undefined> {
-  const utilsPath = path.resolve(cwd, config.libDir, "utils.ts");
+  const helperPath = path.resolve(cwd, config.libDir, "client-only.tsx");
   let source: string;
   try {
-    source = await fs.readFile(utilsPath, "utf8");
+    source = await fs.readFile(helperPath, "utf8");
   } catch {
-    return undefined;
+    source = "";
   }
 
-  const helperSource = `// Based on TanStack Router's Solid ClientOnly:
+  const helperSource = `import { Show, createSignal, onMount, type JSX } from "solid-js";
+
+// Based on TanStack Router's Solid ClientOnly:
 // https://github.com/TanStack/router/blob/4eed408f127b3fcc92e1cf39889edd8bce8486c8/packages/solid-router/src/ClientOnly.tsx
-export function clientOnly<TProps extends object>(
-  Component: (props: TProps) => JSX.Element,
-  fallback?: JSX.Element,
-): (props: TProps) => JSX.Element {
-  return (props) => {
-    const hydrated = useHydrated();
-    return createComponent(Show, {
-      keyed: true,
-      get when() {
-        return hydrated();
-      },
-      get fallback() {
-        return fallback ?? null;
-      },
-      get children() {
-        return createMemo(() => Component(props));
-      },
-    }) as unknown as JSX.Element;
-  };
+export interface ClientOnlyProps {
+  children: JSX.Element;
+  fallback?: JSX.Element;
+}
+
+export function ClientOnly(props: ClientOnlyProps) {
+  const hydrated = useHydrated();
+  return (
+    <Show when={hydrated()} fallback={props.fallback ?? null}>
+      {props.children}
+    </Show>
+  );
 }
 
 export function useHydrated(): () => boolean {
@@ -263,95 +266,56 @@ export function useHydrated(): () => boolean {
     return undefined;
   }
 
-  const sourceWithImports = ensureSolidWebImports(ensureSolidImports(source));
-  const nextSource = sourceWithImports.includes("export function clientOnly")
-    ? sourceWithImports.replace(/export function clientOnly[\s\S]*$/, helperSource)
-    : `${sourceWithImports}\n${helperSource}`;
+  const nextSource = source.includes("export function ClientOnly")
+    ? source.replace(/import\s+\{[^}]*\}\s+from\s+["']solid-js["'];?\n+[\s\S]*$/, helperSource)
+    : helperSource;
 
-  await fs.writeFile(utilsPath, nextSource, "utf8");
-  return utilsPath;
-}
-
-function ensureSolidImports(source: string): string {
-  const requiredImports = ["Show", "createMemo", "createSignal", "onMount"];
-  const requiredTypeImports = ["JSX"];
-  const solidImportPattern = /import\s+\{([^}]*)\}\s+from\s+["']solid-js["'];?/;
-  const match = source.match(solidImportPattern);
-  const importList = match?.[1];
-
-  if (!match || !importList) {
-    return `import { ${requiredImports.join(", ")}, type ${requiredTypeImports.join(", type ")} } from "solid-js";\n${source}`;
-  }
-
-  const imports = new Set(
-    importList
-      .split(",")
-      .map((part) => part.trim())
-      .filter(Boolean),
-  );
-
-  for (const importName of requiredImports) {
-    imports.add(importName);
-  }
-  for (const importName of requiredTypeImports) {
-    imports.add(`type ${importName}`);
-  }
-
-  return source.replace(
-    solidImportPattern,
-    `import { ${[...imports].join(", ")} } from "solid-js";`,
-  );
-}
-
-function ensureSolidWebImports(source: string): string {
-  const requiredImports = ["createComponent"];
-  const solidWebImportPattern = /import\s+\{([^}]*)\}\s+from\s+["']solid-js\/web["'];?/;
-  const match = source.match(solidWebImportPattern);
-  const importList = match?.[1];
-
-  if (!match || !importList) {
-    return `import { ${requiredImports.join(", ")} } from "solid-js/web";\n${source}`;
-  }
-
-  const imports = new Set(
-    importList
-      .split(",")
-      .map((part) => part.trim())
-      .filter(Boolean),
-  );
-
-  for (const importName of requiredImports) {
-    imports.add(importName);
-  }
-
-  return source.replace(
-    solidWebImportPattern,
-    `import { ${[...imports].join(", ")} } from "solid-js/web";`,
-  );
+  await fs.writeFile(helperPath, nextSource, "utf8");
+  return helperPath;
 }
 
 function ensureClientOnlyImport(source: string): string {
+  const clientOnlyImportPattern = /import\s+\{([^}]*)\}\s+from\s+(["'][^"']*\/client-only["']);?/;
+  const clientOnlyMatch = source.match(clientOnlyImportPattern);
+  const clientOnlyImportList = clientOnlyMatch?.[1];
+  const clientOnlyImportSource = clientOnlyMatch?.[2];
+
+  if (clientOnlyMatch && clientOnlyImportList && clientOnlyImportSource) {
+    const imports = new Set(
+      clientOnlyImportList
+        .split(",")
+        .map((part) => part.trim())
+        .filter(Boolean),
+    );
+    imports.add("ClientOnly");
+    return source.replace(
+      clientOnlyImportPattern,
+      `import { ${[...imports].sort().join(", ")} } from ${clientOnlyImportSource};`,
+    );
+  }
+
+  let nextSource = source;
   const utilsImportPattern = /import\s+\{([^}]*)\}\s+from\s+(["'][^"']*\/utils["']);?/;
   const match = source.match(utilsImportPattern);
   const importList = match?.[1];
   const importSource = match?.[2];
 
-  if (!match || !importList || !importSource) {
-    return `import { clientOnly } from "@/lib/utils";\n${source}`;
+  if (match && importList && importSource) {
+    const imports = new Set(
+      importList
+        .split(",")
+        .map((part) => part.trim())
+        .filter(Boolean),
+    );
+    imports.delete("clientOnly");
+    imports.delete("ClientOnly");
+    nextSource = source.replace(
+      utilsImportPattern,
+      `import { ${[...imports].sort().join(", ")} } from ${importSource};`,
+    );
   }
 
-  const imports = new Set(
-    importList
-      .split(",")
-      .map((part) => part.trim())
-      .filter(Boolean),
-  );
-  imports.add("clientOnly");
-
-  return source.replace(
-    utilsImportPattern,
-    `import { ${[...imports].sort().join(", ")} } from ${importSource};`,
-  );
+  return `import { ClientOnly } from "@/lib/client-only";\n${nextSource}`;
 }
 
 function getClientComponentExportNames(source: string): string[] {
