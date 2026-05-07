@@ -1,6 +1,6 @@
 {
   "name": "@msviderok/shadcn-to-solid",
-  "version": "0.0.7",
+  "version": "0.0.8",
   "description": "Wrap shadcn add/init and rewrite React Base UI output to Solid",
   "repository": {
     "type": "git",

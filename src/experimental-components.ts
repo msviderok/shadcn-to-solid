@@ -238,6 +238,7 @@ export function clientOnly<TProps extends object>(
   return (props) => {
     const hydrated = useHydrated();
     return createComponent(Show, {
+      keyed: true,
       get when() {
         return hydrated();
       },
