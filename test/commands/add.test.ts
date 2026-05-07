@@ -144,8 +144,10 @@ export function cn(...inputs: ClassValue[]) {
     expect(output).toContain(`export { ClientOnlyButton as Button, buttonVariants };`);
     expect(primitive).toContain(`export namespace Button`);
     expect(primitive).toContain(`export function Button(props: Button.Props)`);
-    expect(utils).toContain(`import { createComponent, memo } from "solid-js/web";`);
-    expect(utils).toContain(`import { createSignal, onMount, Show, type JSX } from "solid-js";`);
+    expect(utils).toContain(`import { createComponent } from "solid-js/web";`);
+    expect(utils).toContain(
+      `import { createMemo, createSignal, onMount, Show, type JSX } from "solid-js";`,
+    );
     expect(utils).toContain(`export function clientOnly<TProps extends object>`);
     expect(utils).toContain(`export function useHydrated(): () => boolean`);
     expect(logs).toContain("add: installing experimental button.");

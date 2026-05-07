@@ -246,7 +246,7 @@ export function clientOnly<TProps extends object>(
         return fallback ?? null;
       },
       get children() {
-        return memo(() => Component(props));
+        return createMemo(() => Component(props));
       },
     }) as unknown as JSX.Element;
   };
@@ -273,7 +273,7 @@ export function useHydrated(): () => boolean {
 }
 
 function ensureSolidImports(source: string): string {
-  const requiredImports = ["Show", "createSignal", "onMount"];
+  const requiredImports = ["Show", "createMemo", "createSignal", "onMount"];
   const requiredTypeImports = ["JSX"];
   const solidImportPattern = /import\s+\{([^}]*)\}\s+from\s+["']solid-js["'];?/;
   const match = source.match(solidImportPattern);
@@ -304,7 +304,7 @@ function ensureSolidImports(source: string): string {
 }
 
 function ensureSolidWebImports(source: string): string {
-  const requiredImports = ["createComponent", "memo"];
+  const requiredImports = ["createComponent"];
   const solidWebImportPattern = /import\s+\{([^}]*)\}\s+from\s+["']solid-js\/web["'];?/;
   const match = source.match(solidWebImportPattern);
   const importList = match?.[1];
