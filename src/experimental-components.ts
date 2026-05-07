@@ -229,30 +229,50 @@ async function ensureClientOnlyHelper(
     return undefined;
   }
 
-  if (source.includes("export function clientOnly")) {
-    return undefined;
-  }
-
-  const nextSource = `${ensureSolidImports(source)}
-
+  const helperSource = `// Based on TanStack Router's Solid ClientOnly:
+// https://github.com/TanStack/router/blob/4eed408f127b3fcc92e1cf39889edd8bce8486c8/packages/solid-router/src/ClientOnly.tsx
 export function clientOnly<TProps extends object>(
   Component: (props: TProps) => JSX.Element,
   fallback?: JSX.Element,
 ): (props: TProps) => JSX.Element {
   return (props) => {
-    const [mounted, setMounted] = createSignal(false);
-    onMount(() => setMounted(true));
-    return createMemo(() => (mounted() ? Component(props) : fallback)) as unknown as JSX.Element;
+    const hydrated = useHydrated();
+    return createComponent(Show, {
+      get when() {
+        return hydrated();
+      },
+      get fallback() {
+        return fallback ?? null;
+      },
+      get children() {
+        return memo(() => Component(props));
+      },
+    }) as unknown as JSX.Element;
   };
 }
+
+export function useHydrated(): () => boolean {
+  const [hydrated, setHydrated] = createSignal(false);
+  onMount(() => setHydrated(true));
+  return () => hydrated();
+}
 `;
+
+  if (source.includes(helperSource)) {
+    return undefined;
+  }
+
+  const sourceWithImports = ensureSolidWebImports(ensureSolidImports(source));
+  const nextSource = sourceWithImports.includes("export function clientOnly")
+    ? sourceWithImports.replace(/export function clientOnly[\s\S]*$/, helperSource)
+    : `${sourceWithImports}\n${helperSource}`;
 
   await fs.writeFile(utilsPath, nextSource, "utf8");
   return utilsPath;
 }
 
 function ensureSolidImports(source: string): string {
-  const requiredImports = ["createMemo", "createSignal", "onMount"];
+  const requiredImports = ["Show", "createSignal", "onMount"];
   const requiredTypeImports = ["JSX"];
   const solidImportPattern = /import\s+\{([^}]*)\}\s+from\s+["']solid-js["'];?/;
   const match = source.match(solidImportPattern);
@@ -279,6 +299,33 @@ function ensureSolidImports(source: string): string {
   return source.replace(
     solidImportPattern,
     `import { ${[...imports].join(", ")} } from "solid-js";`,
+  );
+}
+
+function ensureSolidWebImports(source: string): string {
+  const requiredImports = ["createComponent", "memo"];
+  const solidWebImportPattern = /import\s+\{([^}]*)\}\s+from\s+["']solid-js\/web["'];?/;
+  const match = source.match(solidWebImportPattern);
+  const importList = match?.[1];
+
+  if (!match || !importList) {
+    return `import { ${requiredImports.join(", ")} } from "solid-js/web";\n${source}`;
+  }
+
+  const imports = new Set(
+    importList
+      .split(",")
+      .map((part) => part.trim())
+      .filter(Boolean),
+  );
+
+  for (const importName of requiredImports) {
+    imports.add(importName);
+  }
+
+  return source.replace(
+    solidWebImportPattern,
+    `import { ${[...imports].join(", ")} } from "solid-js/web";`,
   );
 }
 
