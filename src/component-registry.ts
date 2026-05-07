@@ -38,6 +38,8 @@ export const BASE_UI_SOLID_COMPONENTS = new Set([
 
 export const EXPERIMENTAL_COMPONENTS = new Set(["button"]);
 
+export const EXPERIMENTAL_PRIMITIVE_FILES = new Map([["button", "button-primitive"]]);
+
 export interface ComponentAvailability {
   supported: string[];
   unsupported: string[];
@@ -66,4 +68,12 @@ export function classifyComponents(names: string[]): ComponentAvailability {
     unsupported,
     experimental,
   };
+}
+
+export function hasBaseUiSolidPrimitive(name: string): boolean {
+  return BASE_UI_SOLID_COMPONENTS.has(name);
+}
+
+export function getExperimentalPrimitiveFile(name: string): string | undefined {
+  return EXPERIMENTAL_PRIMITIVE_FILES.get(name);
 }

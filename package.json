@@ -7,7 +7,7 @@
     "url": "git+https://github.com/msviderok/shadcn-to-solid.git"
   },
   "bin": {
-    "shadcn-solid": "./dist/cli.js"
+    "shadcn-solid": "dist/cli.js"
   },
   "files": [
     "dist"

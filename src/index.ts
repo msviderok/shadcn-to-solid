@@ -11,6 +11,9 @@ export {
 export {
   BASE_UI_SOLID_COMPONENTS,
   EXPERIMENTAL_COMPONENTS,
+  EXPERIMENTAL_PRIMITIVE_FILES,
   classifyComponents,
+  getExperimentalPrimitiveFile,
+  hasBaseUiSolidPrimitive,
   type ComponentAvailability,
 } from "./component-registry.js";

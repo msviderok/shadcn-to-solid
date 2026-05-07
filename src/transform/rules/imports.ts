@@ -1,4 +1,6 @@
+import path from "node:path";
 import type { ImportDeclaration } from "ts-morph";
+import { getExperimentalPrimitiveFile, hasBaseUiSolidPrimitive } from "../../component-registry.js";
 import {
   addSolidTypeImport,
   addSolidValueImport,
@@ -28,7 +30,9 @@ export function rewriteImports(context: FileTransformContext): void {
       continue;
     }
 
-    const mapped = mapImportSource(specifier, context.config);
+    const mapped = isBaseUiSourceImport(context, specifier)
+      ? mapBaseUiImportSource(context, specifier)
+      : mapImportSource(specifier, context.config);
     if (mapped && mapped !== specifier) {
       importDeclaration.setModuleSpecifier(mapped);
       context.addRule("imports");
@@ -36,6 +40,57 @@ export function rewriteImports(context: FileTransformContext): void {
   }
 
   syncSolidImports(context);
+}
+
+function isBaseUiSourceImport(context: FileTransformContext, specifier: string): boolean {
+  return (
+    specifier === context.config.source.package ||
+    specifier.startsWith(`${context.config.source.package}/`)
+  );
+}
+
+function mapBaseUiImportSource(
+  context: FileTransformContext,
+  specifier: string,
+): string | undefined {
+  const sourcePackage = context.config.source.package;
+  if (specifier === sourcePackage) {
+    return context.config.target.package;
+  }
+  if (!specifier.startsWith(`${sourcePackage}/`)) {
+    return undefined;
+  }
+
+  const subpath = specifier.slice(sourcePackage.length + 1);
+  const primitiveName = subpath.split("/")[0];
+  if (!primitiveName) {
+    return undefined;
+  }
+
+  if (hasBaseUiSolidPrimitive(primitiveName)) {
+    return `${context.config.target.package}/${subpath}`;
+  }
+
+  const experimentalPrimitiveFile = getExperimentalPrimitiveFile(primitiveName);
+  if (!experimentalPrimitiveFile || !isInComponentsDir(context)) {
+    return undefined;
+  }
+
+  return getRelativeImportSource(
+    context.sourceFile.getDirectoryPath(),
+    path.resolve(context.sourceFile.getDirectoryPath(), experimentalPrimitiveFile),
+  );
+}
+
+function isInComponentsDir(context: FileTransformContext): boolean {
+  const componentsDir = context.config.componentsDir.replaceAll("\\", "/").replace(/\/$/, "");
+  const filePath = context.sourceFile.getFilePath().replaceAll("\\", "/");
+  return filePath.includes(`/${componentsDir}/`) || filePath.startsWith(`${componentsDir}/`);
+}
+
+function getRelativeImportSource(fromDir: string, toPathWithoutExtension: string): string {
+  const relativePath = path.relative(fromDir, toPathWithoutExtension).replaceAll("\\", "/");
+  return relativePath.startsWith(".") ? relativePath : `./${relativePath}`;
 }
 
 function rewriteReactImport(context: FileTransformContext, declaration: ImportDeclaration): void {
