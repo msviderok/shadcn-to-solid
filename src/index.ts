@@ -8,3 +8,9 @@ export {
   type ShadcnSolidConfig,
   type StyleUnitKind,
 } from "./config.js";
+export {
+  BASE_UI_SOLID_COMPONENTS,
+  EXPERIMENTAL_COMPONENTS,
+  classifyComponents,
+  type ComponentAvailability,
+} from "./component-registry.js";

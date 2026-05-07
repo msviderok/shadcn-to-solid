@@ -15,12 +15,14 @@ program
 program
   .command("add")
   .allowUnknownOption(true)
+  .option("--experimental", "Install experimental Solid component ports")
   .argument("<names...>")
-  .action(async (names, _options, command) => {
+  .action(async (names, options, command) => {
     await runAddCommand({
       cwd: process.cwd(),
       names: names as string[],
       forwardedArgs: command.args.slice((names as string[]).length),
+      experimental: Boolean(options.experimental),
     });
   });
 

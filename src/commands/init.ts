@@ -23,7 +23,7 @@ const DEFAULT_CONFIG_FILE = `export default {
   },
   target: {
     package: "@msviderok/base-ui-solid",
-    version: "1.0.0-beta.9",
+    version: "1.0.0-beta.11",
   },
   importMap: {
     "lucide-react": "lucide-solid",
