@@ -9,6 +9,13 @@ export {
   type StyleUnitKind,
 } from "./config.js";
 export {
+  resolveAddComponents,
+  getRegistryIndexUrl,
+  collectBaseUiImportSubpaths,
+  type AddComponentResolution,
+  type ResolveAddComponentsOptions,
+} from "./add-resolution.js";
+export {
   BASE_UI_SOLID_COMPONENTS,
   EXPERIMENTAL_COMPONENTS,
   EXPERIMENTAL_PRIMITIVE_FILES,

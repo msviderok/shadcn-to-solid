@@ -1,5 +1,6 @@
 import path from "node:path";
-import { classifyComponents, EXPERIMENTAL_COMPONENTS } from "../component-registry.js";
+import { resolveAddComponents } from "../add-resolution.js";
+import { EXPERIMENTAL_COMPONENTS } from "../component-registry.js";
 import { loadConfig } from "../config.js";
 import {
   installExperimentalComponents,
@@ -20,30 +21,33 @@ export interface AddCommandOptions {
   transformProjectFiles?: typeof transformFiles;
   installExperimental?: typeof installExperimentalComponents;
   wrapClientOnlyExports?: typeof wrapClientOnlyComponentExports;
+  resolveAddComponents?: typeof resolveAddComponents;
 }
 
 export async function runAddCommand(options: AddCommandOptions): Promise<void> {
   const config = await (options.loadProjectConfig ?? loadConfig)(options.cwd);
-  const availability = classifyComponents(options.names);
-  const experimentalNames = options.experimental ? availability.experimental : [];
-  const blockedNames = availability.unsupported.filter((name) => !experimentalNames.includes(name));
+  const resolution = await (options.resolveAddComponents ?? resolveAddComponents)({
+    cwd: options.cwd,
+    config,
+    names: options.names,
+    experimental: Boolean(options.experimental),
+  });
 
-  if (blockedNames.length > 0) {
-    console.log(
-      `add: cannot install ${formatList(blockedNames)} because ${pluralize(blockedNames.length, "component is", "components are")} not present in the Base UI Solid port yet.`,
-    );
+  for (const entry of resolution.blocked) {
+    console.log(`add: cannot install ${entry.name} (${entry.reason}).`);
   }
 
-  if (availability.experimental.length > 0 && !options.experimental) {
+  if (resolution.experimentalAvailable.length > 0 && !options.experimental) {
     console.log(
-      `add: experimental ${pluralize(availability.experimental.length, "component", "components")} available from this request: ${formatList(availability.experimental)}. Use --experimental to install ${pluralize(availability.experimental.length, "it", "them")}.`,
+      `add: experimental ${pluralize(resolution.experimentalAvailable.length, "component", "components")} available from this request: ${formatList(resolution.experimentalAvailable)}. Use --experimental to install ${pluralize(resolution.experimentalAvailable.length, "it", "them")}.`,
     );
   }
+  const experimentalNames = resolution.experimentalPrimitiveNames;
   if (experimentalNames.length > 0) {
     console.log(`add: installing experimental ${formatList(experimentalNames)}.`);
   }
 
-  const shadcnNames = [...availability.supported, ...experimentalNames];
+  const shadcnNames = resolution.shadcnNames;
   if (shadcnNames.length === 0) {
     return;
   }

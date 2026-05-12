@@ -4,6 +4,7 @@ import path from "node:path";
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 import { runAddCommand } from "../../src/commands/add.js";
 import { resolveConfig } from "../../src/config.js";
+import type { AddComponentResolution } from "../../src/add-resolution.js";
 import { stringifyLogMessage } from "../helpers.js";
 
 const tempDirs: string[] = [];
@@ -32,18 +33,33 @@ describe("add command", () => {
       logs.push(stringifyLogMessage(message));
     });
 
+    const blockedResolution: AddComponentResolution = {
+      registryIndexUrl: "https://example.com/r/styles/new-york-v4/registry.json",
+      shadcnNames: [],
+      experimentalPrimitiveNames: [],
+      blocked: [
+        {
+          name: "button",
+          reason:
+            'depends on experimental Base UI primitive "button"; use --experimental to install',
+        },
+      ],
+      experimentalAvailable: ["button"],
+    };
+
     await runAddCommand({
       cwd,
       names: ["button"],
       forwardedArgs: [],
       runShadcnCommand,
       transformProjectFiles,
+      resolveAddComponents: async () => blockedResolution,
     });
 
     expect(runShadcnCommand).not.toHaveBeenCalled();
     expect(transformProjectFiles).not.toHaveBeenCalled();
     expect(logs).toContain(
-      "add: cannot install button because component is not present in the Base UI Solid port yet.",
+      'add: cannot install button (depends on experimental Base UI primitive "button"; use --experimental to install).',
     );
     expect(logs).toContain(
       "add: experimental component available from this request: button. Use --experimental to install it.",
@@ -120,12 +136,21 @@ export function cn(...inputs: ClassValue[]) {
       logs.push(stringifyLogMessage(message));
     });
 
+    const okResolution: AddComponentResolution = {
+      registryIndexUrl: "https://example.com/r/styles/new-york-v4/registry.json",
+      shadcnNames: ["button"],
+      experimentalPrimitiveNames: ["button"],
+      blocked: [],
+      experimentalAvailable: [],
+    };
+
     await runAddCommand({
       cwd,
       names: ["button"],
       forwardedArgs: ["--overwrite"],
       experimental: true,
       runShadcnCommand,
+      resolveAddComponents: async () => okResolution,
     });
 
     const output = await fs.readFile(componentPath, "utf8");
@@ -189,6 +214,14 @@ export { Accordion };
 
     vi.spyOn(console, "log").mockImplementation(() => {});
 
+    const accordionResolution: AddComponentResolution = {
+      registryIndexUrl: "https://example.com/r/styles/new-york-v4/registry.json",
+      shadcnNames: ["accordion"],
+      experimentalPrimitiveNames: [],
+      blocked: [],
+      experimentalAvailable: [],
+    };
+
     await runAddCommand({
       cwd,
       names: ["accordion"],
@@ -196,6 +229,7 @@ export { Accordion };
       loadProjectConfig: async () => resolveConfig(undefined),
       runShadcnCommand,
       transformProjectFiles,
+      resolveAddComponents: async () => accordionResolution,
     });
 
     expect(runShadcnCommand).toHaveBeenCalledWith(cwd, ["add", "accordion", "--overwrite"]);

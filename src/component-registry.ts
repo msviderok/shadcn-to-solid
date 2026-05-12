@@ -46,6 +46,7 @@ export interface ComponentAvailability {
   experimental: string[];
 }
 
+/** Classifies names by Base UI Solid port membership only (not shadcn registry). Prefer {@link resolveAddComponents} for `add` behavior. */
 export function classifyComponents(names: string[]): ComponentAvailability {
   const uniqueNames = [...new Set(names)];
   const supported: string[] = [];
